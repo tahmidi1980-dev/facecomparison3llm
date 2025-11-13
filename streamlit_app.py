@@ -1,5 +1,6 @@
 import streamlit as st
 import time
+import json
 from pathlib import Path
 from PIL import Image
 import sys
@@ -12,10 +13,7 @@ from backend.logger import logger as comparison_logger
 from backend.image_processor import processor
 import backend.config as config
 
-# ============================================================================
-# PAGE CONFIGURATION
-# ============================================================================
-
+# Page Configuration
 st.set_page_config(
     page_title="Face Comparison System",
     page_icon="🎭",
@@ -23,10 +21,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ============================================================================
-# CUSTOM CSS
-# ============================================================================
-
+# Custom CSS with Enhanced Interactivity
 st.markdown("""
 <style>
     /* Main container */
@@ -34,7 +29,7 @@ st.markdown("""
         padding-top: 2rem;
     }
     
-    /* Header styling */
+    /* Header styling with gradient animation */
     .header-container {
         text-align: center;
         padding: 2rem 0;
@@ -42,11 +37,23 @@ st.markdown("""
         border-radius: 1rem;
         margin-bottom: 2rem;
         color: white;
+        animation: fadeIn 0.8s ease-in;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-20px); }
+        to { opacity: 1; transform: translateY(0); }
     }
     
     .header-icon {
         font-size: 3rem;
         margin-bottom: 0.5rem;
+        animation: bounce 2s infinite;
+    }
+    
+    @keyframes bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
     }
     
     .header-title {
@@ -60,27 +67,30 @@ st.markdown("""
         opacity: 0.9;
     }
     
-    /* Upload section */
-    .upload-section {
-        background: white;
-        padding: 2rem;
-        border-radius: 1rem;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        margin-bottom: 2rem;
-    }
-    
-    /* Result cards */
+    /* Result cards with hover effect */
     .result-card {
         background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%);
         padding: 2rem;
         border-radius: 1rem;
         text-align: center;
         margin: 2rem 0;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .result-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
     }
     
     .result-icon {
         font-size: 4rem;
         margin-bottom: 1rem;
+        animation: scaleIn 0.5s ease;
+    }
+    
+    @keyframes scaleIn {
+        from { transform: scale(0); }
+        to { transform: scale(1); }
     }
     
     .result-title {
@@ -89,16 +99,23 @@ st.markdown("""
         margin-bottom: 0.5rem;
     }
     
-    /* Stage indicators */
+    /* Stage indicators with smooth transitions */
     .stage-container {
         display: flex;
         justify-content: space-around;
         margin: 2rem 0;
+        gap: 1rem;
     }
     
     .stage {
         text-align: center;
         padding: 1rem;
+        border-radius: 0.5rem;
+        transition: all 0.3s ease;
+    }
+    
+    .stage:hover {
+        background: rgba(99, 102, 241, 0.05);
     }
     
     .stage-icon {
@@ -112,19 +129,22 @@ st.markdown("""
         font-weight: 500;
     }
     
-    /* Info box */
+    /* Info box with hover effect */
     .info-box {
-        background: #f3f4f6;
+        background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
         padding: 1rem;
         border-radius: 0.5rem;
         margin: 1rem 0;
+        border-left: 4px solid #6366f1;
+        transition: all 0.3s ease;
     }
     
-    /* Hide Streamlit branding */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
+    .info-box:hover {
+        transform: translateX(5px);
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+    }
     
-    /* Custom button */
+    /* Enhanced button styling */
     .stButton>button {
         width: 100%;
         background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
@@ -134,21 +154,134 @@ st.markdown("""
         border-radius: 0.75rem;
         border: none;
         font-size: 1.1rem;
+        transition: all 0.3s ease;
+        cursor: pointer;
     }
     
     .stButton>button:hover {
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 10px 20px rgba(99, 102, 241, 0.4);
         transform: translateY(-2px);
     }
+    
+    .stButton>button:active {
+        transform: translateY(0);
+    }
+    
+    /* Download button special styling */
+    .stDownloadButton>button {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+    
+    .stDownloadButton>button:hover {
+        box-shadow: 0 10px 20px rgba(16, 185, 129, 0.4);
+    }
+    
+    /* Progress bar animation */
+    .stProgress > div > div > div {
+        background: linear-gradient(90deg, #6366f1, #8b5cf6, #6366f1);
+        background-size: 200% 100%;
+        animation: shimmer 2s infinite;
+    }
+    
+    @keyframes shimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }
+    
+    /* Metric cards enhancement */
+    .stMetric {
+        background: white;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        transition: all 0.3s ease;
+    }
+    
+    .stMetric:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Hide Streamlit branding */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    
+    /* Expander styling */
+    .streamlit-expanderHeader {
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%);
+        border-radius: 0.5rem;
+        font-weight: 600;
+    }
+    
+    .streamlit-expanderHeader:hover {
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%);
+    }
+    
+    /* Sidebar enhancement */
+    .css-1d391kg {
+        background: linear-gradient(180deg, #f9fafb 0%, #ffffff 100%);
+    }
+    
+    /* Image upload area */
+    .stFileUploader {
+        border: 2px dashed #6366f1;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .stFileUploader:hover {
+        border-color: #4f46e5;
+        background: rgba(99, 102, 241, 0.02);
+    }
 </style>
+
+<script>
+// Enhanced interactivity with JavaScript
+document.addEventListener('DOMContentLoaded', function() {
+    // Smooth scroll behavior
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+    });
+    
+    // Add ripple effect to buttons
+    document.querySelectorAll('.stButton>button').forEach(button => {
+        button.addEventListener('click', function(e) {
+            let ripple = document.createElement('span');
+            ripple.classList.add('ripple');
+            this.appendChild(ripple);
+            
+            let x = e.clientX - e.target.offsetLeft;
+            let y = e.clientY - e.target.offsetTop;
+            
+            ripple.style.left = x + 'px';
+            ripple.style.top = y + 'px';
+            
+            setTimeout(() => ripple.remove(), 600);
+        });
+    });
+    
+    // Add loading spinner to buttons when clicked
+    document.querySelectorAll('.stButton>button').forEach(button => {
+        button.addEventListener('click', function() {
+            if (!this.disabled) {
+                this.innerHTML = '<span class="spinner"></span> ' + this.innerHTML;
+            }
+        });
+    });
+});
+</script>
 """, unsafe_allow_html=True)
 
-# ============================================================================
-# SESSION STATE INITIALIZATION
-# ============================================================================
-
+# Session State Initialization
 if 'stage' not in st.session_state:
-    st.session_state.stage = 'upload'  # upload, processing, result
+    st.session_state.stage = 'upload'
 
 if 'result' not in st.session_state:
     st.session_state.result = None
@@ -163,9 +296,7 @@ if 'progress_data' not in st.session_state:
         'current_stage': None
     }
 
-# ============================================================================
-# HELPER FUNCTIONS
-# ============================================================================
+# Helper Functions
 
 def reset_app():
     """Reset application to initial state"""
@@ -184,11 +315,9 @@ def validate_image(uploaded_file):
     if uploaded_file is None:
         return False, "No file uploaded"
     
-    # Check file size (5MB max)
     if uploaded_file.size > 5 * 1024 * 1024:
         return False, f"File too large ({uploaded_file.size / 1024 / 1024:.1f}MB). Maximum 5MB."
     
-    # Check file type
     if uploaded_file.type not in ['image/jpeg', 'image/jpg', 'image/png']:
         return False, "Invalid file type. Only JPG and PNG allowed."
     
@@ -199,7 +328,6 @@ def progress_callback(message: str, percentage: float):
     st.session_state.progress_data['percentage'] = percentage
     st.session_state.progress_data['message'] = message
     
-    # Determine current stage
     message_lower = message.lower()
     if 'original' in message_lower:
         st.session_state.progress_data['current_stage'] = 'original'
@@ -211,6 +339,7 @@ def progress_callback(message: str, percentage: float):
         st.session_state.progress_data['current_stage'] = 'completed'
 
 def display_confidence_metric(confidence: float, is_same: bool):
+    """Display confidence score with color coding"""
     if confidence >= 80:
         color = "🟢"
         level = "High"
@@ -221,14 +350,12 @@ def display_confidence_metric(confidence: float, is_same: bool):
         color = "🔴"
         level = "Low"
     
-    return f"{color} {confidence:.1f}% ({level} Confidence)"
+    return f'{color} <strong>{confidence:.1f}%</strong> ({level} Confidence)'
 
-# ============================================================================
-# MAIN APP
-# ============================================================================
+# Main Application
 
 def main():
-    # Header
+    # Header Section
     st.markdown("""
     <div class="header-container">
         <div class="header-icon">🎭</div>
@@ -237,15 +364,11 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
-    # ========================================================================
-    # UPLOAD STAGE
-    # ========================================================================
-    
+    # Upload Stage
     if st.session_state.stage == 'upload':
         st.markdown("### 📸 Upload Two Face Images")
         st.markdown("Upload two face images to verify if they show the same person")
         
-        # Two columns for image upload
         col1, col2 = st.columns(2)
         
         with col1:
@@ -286,7 +409,7 @@ def main():
                     st.error(error)
                     st.session_state.uploaded_images['img2'] = None
         
-        # Info box
+        # Info Box
         st.markdown("""
         <div class="info-box">
             📌 <strong>Tips for best results:</strong>
@@ -299,9 +422,9 @@ def main():
         </div>
         """, unsafe_allow_html=True)
         
-        # Analyze button
         st.markdown("---")
         
+        # Analyze Button
         can_analyze = (
             st.session_state.uploaded_images['img1'] is not None and
             st.session_state.uploaded_images['img2'] is not None
@@ -311,18 +434,13 @@ def main():
             st.session_state.stage = 'processing'
             st.rerun()
     
-    # ========================================================================
-    # PROCESSING STAGE
-    # ========================================================================
-    
+    # Processing Stage
     elif st.session_state.stage == 'processing':
         st.markdown("### ⏳ Analyzing Faces...")
         
-        # Progress bar
         progress_bar = st.progress(0)
         status_text = st.empty()
-                
-        # Create placeholder for stage updates
+        
         stage_cols = st.columns(3)
         stage_placeholders = {
             'original': stage_cols[0].empty(),
@@ -330,22 +448,19 @@ def main():
             'aligned': stage_cols[2].empty()
         }
         
-        # Show initial state
         for key, placeholder in stage_placeholders.items():
             placeholder.markdown("⏹ Pending")
         
-        # Run comparison
+        # Run Comparison
         try:
             img1 = st.session_state.uploaded_images['img1']
             img2 = st.session_state.uploaded_images['img2']
             
-            # Custom progress callback that updates UI
             def streamlit_progress_callback(message: str, percentage: float):
                 progress_callback(message, percentage)
                 progress_bar.progress(percentage)
                 status_text.text(message)
                 
-                # Update stage indicators
                 current = st.session_state.progress_data['current_stage']
                 if current == 'original':
                     stage_placeholders['original'].markdown("⏳ **Processing...**")
@@ -361,20 +476,15 @@ def main():
                     stage_placeholders['cropped'].markdown("✅ Completed")
                     stage_placeholders['aligned'].markdown("✅ Completed")
             
-            # Run orchestrator
             result = orchestrator.run_comparison(
                 img1, img2, 
                 progress_callback=streamlit_progress_callback
             )
             
-            # Store result
             st.session_state.result = result
-            
-            # Log comparison
             comparison_logger.log_comparison(result)
             
-            # Move to result stage
-            time.sleep(0.5)  # Brief pause to show completion
+            time.sleep(0.5)
             st.session_state.stage = 'result'
             st.rerun()
             
@@ -385,10 +495,7 @@ def main():
             if st.button("🔄 Try Again"):
                 reset_app()
     
-    # ========================================================================
-    # RESULT STAGE
-    # ========================================================================
-    
+    # Result Stage
     elif st.session_state.stage == 'result':
         result = st.session_state.result
         
@@ -398,11 +505,10 @@ def main():
                 reset_app()
             return
         
-        # Determine result
         is_same = result['final_decision'] == 'same'
         confidence = result['confidence']
         
-        # Result card
+        # Result Card
         icon = "✅" if is_same else "❌"
         title = "Same Person" if is_same else "Different Person"
         subtitle = "The images show the same person" if is_same else "The images show different people"
@@ -415,16 +521,14 @@ def main():
         </div>
         """, unsafe_allow_html=True)
         
-        # Confidence score (large display)
+        # Confidence Score Display
         st.markdown("### 🎯 Confidence Score")
         confidence_display = display_confidence_metric(confidence, is_same)
         st.markdown(f"<div style='text-align: center; font-size: 2rem; margin: 2rem 0;'>{confidence_display}</div>", unsafe_allow_html=True)
         
-        # Create progress circle visualization
-        
         st.markdown("---")
         
-        # Statistics
+        # Statistics Section
         st.markdown("### 📊 Analysis Statistics")
         
         col1, col2, col3 = st.columns(3)
@@ -450,93 +554,78 @@ def main():
                 help="Number of API calls made"
             )
         
-# Additional info (expandable)
-with st.expander("📋 Detailed Information"):
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown("**Processing Details:**")
-        st.write(f"- Early Stopped: {'Yes ✅' if result.get('stopped_early', False) else 'No'}")
-        st.write(f"- Cropping: {'Success ✅' if result.get('cropping_success', False) else 'Failed ❌'}")
-        st.write(f"- Alignment: {'Success ✅' if result.get('alignment_success', False) else 'Failed ❌'}")
-    
-    with col2:
-        st.markdown("**Vote Breakdown:**")
-        
-        # Try to get breakdown data
-        breakdown = result.get('breakdown', {})
-        
-        # Method 1: From breakdown dict
-        if breakdown and (breakdown.get('votes_same', 0) > 0 or breakdown.get('votes_different', 0) > 0):
-            votes_same = breakdown.get('votes_same', 0)
-            votes_diff = breakdown.get('votes_different', 0)
-        # Method 2: From vote_details
-        elif result.get('vote_details'):
-            vote_details = result.get('vote_details', [])
-            votes_same = sum(1 for v in vote_details if v.get('result') == 'same')
-            votes_diff = sum(1 for v in vote_details if v.get('result') == 'different')
-        # Method 3: Calculate from total_votes and decision
-        else:
-            total_votes = result.get('total_votes', 0)
-            final_decision = result.get('final_decision', '')
+        # Detailed Information Expander
+        with st.expander("📋 Detailed Information"):
+            col1, col2 = st.columns(2)
             
-            if total_votes > 0:
-                # Estimate based on confidence and decision
-                if final_decision == 'same':
-                    # If same, majority voted same
-                    votes_same = int(total_votes * result.get('confidence', 50) / 100)
-                    votes_diff = total_votes - votes_same
+            with col1:
+                st.markdown("**Processing Details:**")
+                st.write(f"- Early Stopped: {'Yes ✅' if result.get('stopped_early', False) else 'No'}")
+                st.write(f"- Cropping: {'Success ✅' if result.get('cropping_success', False) else 'Failed ❌'}")
+                st.write(f"- Alignment: {'Success ✅' if result.get('alignment_success', False) else 'Failed ❌'}")
+            
+            with col2:
+                st.markdown("**Vote Breakdown:**")
+                
+                breakdown = result.get('breakdown', {})
+                
+                if breakdown and (breakdown.get('votes_same', 0) > 0 or breakdown.get('votes_different', 0) > 0):
+                    votes_same = breakdown.get('votes_same', 0)
+                    votes_diff = breakdown.get('votes_different', 0)
+                elif result.get('vote_details'):
+                    vote_details = result.get('vote_details', [])
+                    votes_same = sum(1 for v in vote_details if v.get('result') == 'same')
+                    votes_diff = sum(1 for v in vote_details if v.get('result') == 'different')
                 else:
-                    # If different, majority voted different
-                    votes_diff = int(total_votes * result.get('confidence', 50) / 100)
-                    votes_same = total_votes - votes_diff
-            else:
-                votes_same = 0
-                votes_diff = 0
+                    total_votes = result.get('total_votes', 0)
+                    final_decision = result.get('final_decision', '')
+                    
+                    if total_votes > 0:
+                        if final_decision == 'same':
+                            votes_same = max(1, int(total_votes * result.get('confidence', 50) / 100))
+                            votes_diff = total_votes - votes_same
+                        else:
+                            votes_diff = max(1, int(total_votes * result.get('confidence', 50) / 100))
+                            votes_same = total_votes - votes_diff
+                    else:
+                        votes_same = 0
+                        votes_diff = 0
+                
+                st.write(f"- Same Person: {votes_same} votes")
+                st.write(f"- Different Person: {votes_diff} votes")
+                
+                total = votes_same + votes_diff
+                if total > 0:
+                    st.write(f"- **Total:** {total} votes")
         
-        st.write(f"- Same Person: {votes_same} votes")
-        st.write(f"- Different Person: {votes_diff} votes")
+        # Action Buttons
+        st.markdown("---")
         
-        # Show total for verification
-        total = votes_same + votes_diff
-        if total > 0:
-            st.write(f"- **Total:** {total} votes")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if st.button("🔄 New Comparison"):
+                reset_app()
+        
+        with col2:
+            result_json = json.dumps({
+                'final_decision': result['final_decision'],
+                'confidence': result['confidence'],
+                'total_votes': result['total_votes'],
+                'processing_time': result.get('processing_time', 0),
+                'stopped_early': result.get('stopped_early', False),
+                'cropping_success': result.get('cropping_success', False),
+                'alignment_success': result.get('alignment_success', False)
+            }, indent=2)
+            
+            st.download_button(
+                label="📥 Download Result",
+                data=result_json,
+                file_name="comparison_result.json",
+                mime="application/json"
+            )
 
-# ========================================================================
-# ACTION BUTTONS - DI SINI (SEBELUM SIDEBAR!)
-# ========================================================================
-
-# Action buttons
-st.markdown("---")
-
-col1, col2 = st.columns(2)
-
-with col1:
-    if st.button("🔄 New Comparison", use_container_width=True):
-        reset_app()
-
-with col2:
-    # Download result as JSON
-    import json
-    result_json = json.dumps({
-        'final_decision': result['final_decision'],
-        'confidence': result['confidence'],
-        'total_votes': result['total_votes'],
-        'processing_time': result['processing_time'],
-        'stopped_early': result['stopped_early']
-    }, indent=2)
-    
-    st.download_button(
-        label="📥 Download Result",
-        data=result_json,
-        file_name="comparison_result.json",
-        mime="application/json",
-        use_container_width=True
-    )
-
-# ========================================================================
-# SIDEBAR (Optional Info)
-# ========================================================================
+# Sidebar Section
 
 with st.sidebar:
     st.markdown("### ℹ️ About")
@@ -557,7 +646,7 @@ with st.sidebar:
     
     st.markdown("---")
     
-    # System statistics
+    # System Statistics
     try:
         stats = comparison_logger.get_statistics()
         if stats.get('total_comparisons', 0) > 0:
@@ -571,9 +660,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("**Made with ❤️ using Streamlit**")
 
-# ============================================================================
-# RUN APP
-# ============================================================================
+# Run Application
 
 if __name__ == "__main__":
     main()

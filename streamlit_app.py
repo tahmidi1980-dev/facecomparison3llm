@@ -451,8 +451,8 @@ def main():
             )
         
 # Additional info (expandable)
-        with st.expander("📋 Detailed Information"):
-            col1, col2 = st.columns(2)
+    with st.expander("📋 Detailed Information"):
+        col1, col2 = st.columns(2)
         
         with col1:
             st.markdown("**Processing Details:**")
@@ -501,34 +501,6 @@ def main():
             total = votes_same + votes_diff
             if total > 0:
                 st.write(f"- **Total:** {total} votes")
-            
-            # Action buttons
-            st.markdown("---")
-            
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                if st.button("🔄 New Comparison", use_container_width=True):
-                    reset_app()
-            
-            with col2:
-                # Download result as JSON
-                import json
-                result_json = json.dumps({
-                    'final_decision': result['final_decision'],
-                    'confidence': result['confidence'],
-                    'total_votes': result['total_votes'],
-                    'processing_time': result['processing_time'],
-                    'stopped_early': result['stopped_early']
-                }, indent=2)
-                
-                st.download_button(
-                    label="📥 Download Result",
-                    data=result_json,
-                    file_name="comparison_result.json",
-                    mime="application/json",
-                    use_container_width=True
-                )
     
     # ========================================================================
     # SIDEBAR (Optional Info)

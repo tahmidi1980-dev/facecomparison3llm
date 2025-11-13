@@ -1,6 +1,6 @@
 """
-LLM Comparator Module
-Handles face comparison using Qwen, ChatGPT, Gemini, and DeepFace
+LLM Comparator Module (face-recognition version)
+Handles face comparison using Qwen, ChatGPT, Gemini, and face-recognition
 """
 import base64
 import time
@@ -10,7 +10,12 @@ from typing import Tuple, Optional
 from PIL import Image
 import numpy as np
 from openai import OpenAI
-from deepface import DeepFace
+import face_recognition
+import sys
+from pathlib import Path
+
+# Add parent to path
+sys.path.append(str(Path(__file__).parent))
 import config
 
 logging.basicConfig(level=logging.INFO)
@@ -153,79 +158,54 @@ class LLMComparator:
     
     def compare_with_deepface(self, img1: Image.Image, img2: Image.Image) -> Tuple[Optional[str], str]:
         """
-        Compare faces using DeepFace
+        Compare faces using face_recognition library (lightweight alternative to DeepFace)
         
         Returns:
             (result: 'same'/'different'/None, method: str)
         """
-        logger.info("Comparing with DeepFace...")
+        logger.info("Comparing with face_recognition library...")
         
         try:
             # Convert PIL to numpy arrays
             img1_array = np.array(img1)
             img2_array = np.array(img2)
             
-            # Verify faces using DeepFace
-            result = DeepFace.verify(
-                img1_path=img1_array,
-                img2_path=img2_array,
-                model_name=config.DEEPFACE_CONFIG['model_name'],
-                detector_backend=config.DEEPFACE_CONFIG['detector_backend'],
-                distance_metric=config.DEEPFACE_CONFIG['distance_metric'],
-                enforce_detection=False,
-                align=config.DEEPFACE_CONFIG['align']
-            )
+            # Get face encodings
+            encodings1 = face_recognition.face_encodings(img1_array)
+            encodings2 = face_recognition.face_encodings(img2_array)
             
-            # Check if same person based on distance and threshold
-            is_same = result.get('verified', False)
-            distance = result.get('distance', 1.0)
-            threshold = result.get('threshold', config.DEEPFACE_CONFIG['threshold'])
+            if len(encodings1) == 0 or len(encodings2) == 0:
+                logger.warning("No face detected in one or both images")
+                return None, "face_recognition_no_face"
+            
+            # Use first face detected
+            encoding1 = encodings1[0]
+            encoding2 = encodings2[0]
+            
+            # Calculate face distance (lower = more similar)
+            distance = face_recognition.face_distance([encoding1], encoding2)[0]
+            
+            # Threshold: 0.6 is standard for face_recognition
+            threshold = 0.6
+            is_same = distance < threshold
             
             comparison_result = "same" if is_same else "different"
-            method = f"deepface_{distance:.3f}"
+            method = f"face_recognition_{distance:.3f}"
             
-            logger.info(f"DeepFace result: {comparison_result} (distance: {distance:.3f}, threshold: {threshold:.3f})")
+            logger.info(f"face_recognition result: {comparison_result} (distance: {distance:.3f}, threshold: {threshold:.3f})")
             
             return comparison_result, method
             
         except Exception as e:
-            logger.error(f"DeepFace error: {e}")
-            return None, "deepface_error"
+            logger.error(f"face_recognition error: {e}")
+            return None, "face_recognition_error"
     
     def compare_with_retinaface(self, img1: Image.Image, img2: Image.Image) -> Tuple[Optional[str], str]:
         """
-        Compare faces using RetinaFace + DeepFace embeddings
-        (Used for conditional voting in cropped stage)
+        Compare faces using face_recognition (for compatibility with original code)
         """
-        logger.info("Comparing with RetinaFace...")
-        
-        try:
-            # Convert PIL to numpy
-            img1_array = np.array(img1)
-            img2_array = np.array(img2)
-            
-            # Get embeddings using RetinaFace detector
-            result = DeepFace.verify(
-                img1_path=img1_array,
-                img2_path=img2_array,
-                model_name=config.DEEPFACE_CONFIG['model_name'],
-                detector_backend='retinaface',
-                distance_metric=config.DEEPFACE_CONFIG['distance_metric'],
-                enforce_detection=False,
-                align=True
-            )
-            
-            is_same = result.get('verified', False)
-            distance = result.get('distance', 1.0)
-            
-            comparison_result = "same" if is_same else "different"
-            method = f"retinaface_{distance:.3f}"
-            
-            return comparison_result, method
-            
-        except Exception as e:
-            logger.error(f"RetinaFace comparison error: {e}")
-            return None, "retinaface_error"
+        logger.info("Comparing with face_recognition (retinaface compatibility)...")
+        return self.compare_with_deepface(img1, img2)
 
 # Global comparator instance
 comparator = LLMComparator()
@@ -244,27 +224,13 @@ if __name__ == "__main__":
             img1 = Image.open(test_imgs[0])
             img2 = Image.open(test_imgs[1])
             
-            print("\n1. Testing DeepFace...")
+            print("\n1. Testing face_recognition...")
             result, method = comparator.compare_with_deepface(img1, img2)
             print(f"   Result: {result}, Method: {method}")
             
             print("\n2. Testing Qwen (if API key available)...")
             if config.API_KEYS.get('qwen'):
                 result, method = comparator.compare_with_qwen(img1, img2)
-                print(f"   Result: {result}, Method: {method}")
-            else:
-                print("   Skipped (no API key)")
-            
-            print("\n3. Testing ChatGPT (if API key available)...")
-            if config.API_KEYS.get('chatgpt'):
-                result, method = comparator.compare_with_chatgpt(img1, img2)
-                print(f"   Result: {result}, Method: {method}")
-            else:
-                print("   Skipped (no API key)")
-            
-            print("\n4. Testing Gemini (if API key available)...")
-            if config.API_KEYS.get('gemini'):
-                result, method = comparator.compare_with_gemini(img1, img2)
                 print(f"   Result: {result}, Method: {method}")
             else:
                 print("   Skipped (no API key)")

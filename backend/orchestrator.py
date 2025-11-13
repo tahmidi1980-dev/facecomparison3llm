@@ -6,10 +6,10 @@ import time
 import logging
 from typing import Dict, Any, Callable, Optional
 from PIL import Image
-from image_processor import processor
-from llm_comparator import comparator
-from voting_system import voting_system
-import config
+from backend.image_processor import processor
+from backend.llm_comparator import comparator
+from backend.voting_system import voting_system
+from backend import config
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

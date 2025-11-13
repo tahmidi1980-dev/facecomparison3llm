@@ -267,7 +267,7 @@ def main():
                 valid, error = validate_image(uploaded_file1)
                 if valid:
                     image1 = Image.open(uploaded_file1)
-                    st.image(image1, use_container_width=True)
+                    st.image(image1, use_column_width=True)
                     st.session_state.uploaded_images['img1'] = image1
                 else:
                     st.error(error)

@@ -1,6 +1,6 @@
 """
-Image Preprocessing Pipeline
-Handles cropping with RetinaFace and alignment
+Image Preprocessing Pipeline (face-recognition version)
+Handles cropping and alignment
 """
 import cv2
 import numpy as np
@@ -8,7 +8,10 @@ from PIL import Image
 from pathlib import Path
 from typing import Tuple, Optional
 import logging
-from deepface import DeepFace
+import face_recognition
+import sys
+
+sys.path.append(str(Path(__file__).parent))
 import config
 
 logging.basicConfig(level=logging.INFO)
@@ -20,11 +23,10 @@ class ImageProcessor:
     def __init__(self):
         self.crop_config = config.PREPROCESSING['cropping']
         self.align_config = config.PREPROCESSING['alignment']
-        self.deepface_config = config.DEEPFACE_CONFIG
         
     def crop_with_retinaface(self, img1: Image.Image, img2: Image.Image) -> Tuple[Optional[Image.Image], Optional[Image.Image], bool]:
         """
-        Crop faces using RetinaFace detector
+        Crop faces using face_recognition detector (replaces RetinaFace)
         
         Returns:
             (cropped_img1, cropped_img2, success)
@@ -45,7 +47,7 @@ class ImageProcessor:
                 logger.warning("Failed to crop image 2")
                 return None, None, False
             
-            logger.info("✓ Successfully cropped both images with RetinaFace")
+            logger.info("✓ Successfully cropped both images")
             return cropped1, cropped2, True
             
         except Exception as e:
@@ -53,31 +55,27 @@ class ImageProcessor:
             return None, None, False
     
     def _crop_single_image(self, img: Image.Image) -> Optional[Image.Image]:
-        """Crop single image using DeepFace"""
+        """Crop single image using face_recognition"""
         try:
             # Convert PIL to numpy
             img_array = np.array(img)
             
-            # Extract face with DeepFace
-            faces = DeepFace.extract_faces(
-                img_path=img_array,
-                detector_backend=self.deepface_config['detector_backend'],
-                enforce_detection=True,
-                align=self.deepface_config['align']
-            )
+            # Detect face locations using face_recognition
+            face_locations = face_recognition.face_locations(img_array)
             
-            if not faces or len(faces) == 0:
+            if not face_locations or len(face_locations) == 0:
+                logger.warning("No face detected")
                 return None
             
-            # Get face with highest confidence
-            best_face = max(faces, key=lambda f: f.get('confidence', 0))
+            # Get largest face (by area)
+            best_face = max(face_locations, key=lambda loc: (loc[2] - loc[0]) * (loc[1] - loc[3]))
+            top, right, bottom, left = best_face
             
-            # Get facial area
-            facial_area = best_face.get('facial_area', {})
-            x = facial_area.get('x', 0)
-            y = facial_area.get('y', 0)
-            w = facial_area.get('w', 0)
-            h = facial_area.get('h', 0)
+            # Convert to x, y, w, h format
+            x = left
+            y = top
+            w = right - left
+            h = bottom - top
             
             # Add margin
             margin = self.crop_config['margin']
@@ -108,7 +106,7 @@ class ImageProcessor:
     
     def align_faces(self, img1: Image.Image, img2: Image.Image) -> Tuple[Optional[Image.Image], Optional[Image.Image], bool]:
         """
-        Align faces using eye detection
+        Align faces using face_recognition landmarks
         
         Returns:
             (aligned_img1, aligned_img2, success)
@@ -137,30 +135,41 @@ class ImageProcessor:
             return None, None, False
     
     def _align_single_image(self, img: Image.Image) -> Optional[Image.Image]:
-        """Align single image by rotating to horizontal eyes"""
+        """Align single image by rotating to horizontal eyes using face_recognition"""
         try:
             # Convert to numpy
             img_array = np.array(img)
-            img_gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
             
-            # Detect eyes using Haar Cascade
-            eyes = self._detect_eyes(img_gray)
-            if eyes is None or len(eyes) < 2:
+            # Get face landmarks using face_recognition
+            face_landmarks_list = face_recognition.face_landmarks(img_array)
+            
+            if not face_landmarks_list or len(face_landmarks_list) == 0:
+                logger.warning("No face landmarks detected")
                 return None
             
-            # Get left and right eyes
-            eyes = sorted(eyes, key=lambda e: e[0])
-            left_eye = eyes[0]
-            right_eye = eyes[-1]
+            # Get first face's landmarks
+            face_landmarks = face_landmarks_list[0]
+            
+            # Get eye positions
+            left_eye = face_landmarks.get('left_eye', [])
+            right_eye = face_landmarks.get('right_eye', [])
+            
+            if not left_eye or not right_eye:
+                logger.warning("Eye landmarks not found")
+                return None
+            
+            # Calculate average eye positions
+            left_eye_center = np.mean(left_eye, axis=0).astype(int)
+            right_eye_center = np.mean(right_eye, axis=0).astype(int)
             
             # Calculate angle
-            dY = right_eye[1] - left_eye[1]
-            dX = right_eye[0] - left_eye[0]
+            dY = right_eye_center[1] - left_eye_center[1]
+            dX = right_eye_center[0] - left_eye_center[0]
             angle = np.degrees(np.arctan2(dY, dX))
             
             # Rotate image
-            center_x = (left_eye[0] + right_eye[0]) / 2
-            center_y = (left_eye[1] + right_eye[1]) / 2
+            center_x = (left_eye_center[0] + right_eye_center[0]) / 2
+            center_y = (left_eye_center[1] + right_eye_center[1]) / 2
             
             M = cv2.getRotationMatrix2D((center_x, center_y), angle, 1.0)
             h, w = img_array.shape[:2]
@@ -174,40 +183,6 @@ class ImageProcessor:
             
         except Exception as e:
             logger.error(f"Single alignment error: {e}")
-            return None
-    
-    def _detect_eyes(self, img_gray: np.ndarray) -> Optional[list]:
-        """Detect eyes using Haar Cascade"""
-        try:
-            # Load Haar Cascade
-            cascade_path = cv2.data.haarcascades + 'haarcascade_eye.xml'
-            eye_cascade = cv2.CascadeClassifier(cascade_path)
-            
-            if eye_cascade.empty():
-                return None
-            
-            # Detect eyes
-            eyes = eye_cascade.detectMultiScale(
-                img_gray,
-                scaleFactor=1.1,
-                minNeighbors=5,
-                minSize=(20, 20)
-            )
-            
-            if len(eyes) < 2:
-                return None
-            
-            # Get eye centers
-            eye_centers = []
-            for (ex, ey, ew, eh) in eyes:
-                center_x = ex + ew // 2
-                center_y = ey + eh // 2
-                eye_centers.append((center_x, center_y))
-            
-            return eye_centers
-            
-        except Exception as e:
-            logger.error(f"Eye detection error: {e}")
             return None
     
     def validate_image(self, img: Image.Image) -> Tuple[bool, str]:

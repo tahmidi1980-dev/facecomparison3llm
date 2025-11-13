@@ -1,0 +1,29 @@
+# Face Comparison System - Streamlit Version
+
+# Streamlit Framework
+streamlit==1.39.0
+
+# Environment Variables
+python-dotenv==1.0.1
+
+# Image Processing
+Pillow==11.0.0
+opencv-python-headless==4.10.0.84
+numpy==1.26.4
+
+# Face Recognition
+deepface==0.0.93
+tf-keras==2.18.0
+tensorflow==2.18.0
+
+# LLM API Client
+openai==1.54.3
+
+# HTTP Requests
+requests==2.32.3
+
+# Data Processing
+pandas==2.2.3
+
+# Utilities
+tqdm==4.66.5

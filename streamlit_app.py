@@ -421,13 +421,6 @@ def main():
         st.markdown(f"<div style='text-align: center; font-size: 2rem; margin: 2rem 0;'>{confidence_display}</div>", unsafe_allow_html=True)
         
         # Create progress circle visualization
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            st.metric(
-                label="Confidence",
-                value=f"{confidence:.1f}%",
-                delta=None
-            )
         
         st.markdown("---")
         

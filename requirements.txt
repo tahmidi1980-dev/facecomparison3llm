@@ -7,8 +7,8 @@ Pillow<11,>=10.0.0
 opencv-python-headless==4.10.0.84
 numpy<2.0.0,>=1.24.0
 
-# Face Recognition - MEDIAPIPE (Python 3.13 compatible)
-mediapipe==0.10.14
+# Face Recognition - LIGHTWEIGHT
+face-recognition==1.3.0
 
 # LLM API Client
 openai==1.54.3

@@ -418,7 +418,7 @@ def main():
         # Confidence score (large display)
         st.markdown("### 🎯 Confidence Score")
         confidence_display = display_confidence_metric(confidence, is_same)
-
+        st.markdown(f"<div style='text-align: center; font-size: 2rem; margin: 2rem 0;'>{confidence_display}</div>", unsafe_allow_html=True)
         
         # Create progress circle visualization
         col1, col2, col3 = st.columns([1, 2, 1])

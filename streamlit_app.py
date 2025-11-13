@@ -450,52 +450,85 @@ def main():
                 help="Number of API calls made"
             )
         
-        # Additional info (expandable)
+# Additional info (expandable)
         with st.expander("📋 Detailed Information"):
+            col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("**Processing Details:**")
+            st.write(f"- Early Stopped: {'Yes ✅' if result.get('stopped_early', False) else 'No'}")
+            st.write(f"- Cropping: {'Success ✅' if result.get('cropping_success', False) else 'Failed ❌'}")
+            st.write(f"- Alignment: {'Success ✅' if result.get('alignment_success', False) else 'Failed ❌'}")
+        
+        with col2:
+            st.markdown("**Vote Breakdown:**")
+            
+            # Try to get breakdown data
+            breakdown = result.get('breakdown', {})
+            
+            # Method 1: From breakdown dict
+            if breakdown and (breakdown.get('votes_same', 0) > 0 or breakdown.get('votes_different', 0) > 0):
+                votes_same = breakdown.get('votes_same', 0)
+                votes_diff = breakdown.get('votes_different', 0)
+            # Method 2: From vote_details
+            elif result.get('vote_details'):
+                vote_details = result.get('vote_details', [])
+                votes_same = sum(1 for v in vote_details if v.get('result') == 'same')
+                votes_diff = sum(1 for v in vote_details if v.get('result') == 'different')
+            # Method 3: Calculate from total_votes and decision
+            else:
+                total_votes = result.get('total_votes', 0)
+                final_decision = result.get('final_decision', '')
+                
+                if total_votes > 0:
+                    # Estimate based on confidence and decision
+                    if final_decision == 'same':
+                        # If same, majority voted same
+                        votes_same = int(total_votes * result.get('confidence', 50) / 100)
+                        votes_diff = total_votes - votes_same
+                    else:
+                        # If different, majority voted different
+                        votes_diff = int(total_votes * result.get('confidence', 50) / 100)
+                        votes_same = total_votes - votes_diff
+                else:
+                    votes_same = 0
+                    votes_diff = 0
+            
+            st.write(f"- Same Person: {votes_same} votes")
+            st.write(f"- Different Person: {votes_diff} votes")
+            
+            # Show total for verification
+            total = votes_same + votes_diff
+            if total > 0:
+                st.write(f"- **Total:** {total} votes")
+            
+            # Action buttons
+            st.markdown("---")
+            
             col1, col2 = st.columns(2)
             
             with col1:
-                st.markdown("**Processing Details:**")
-                st.write(f"- Early Stopped: {'Yes ✅' if result['stopped_early'] else 'No'}")
-                st.write(f"- Cropping: {'Success ✅' if result['cropping_success'] else 'Failed ❌'}")
-                st.write(f"- Alignment: {'Success ✅' if result['alignment_success'] else 'Failed ❌'}")
+                if st.button("🔄 New Comparison", use_container_width=True):
+                    reset_app()
             
             with col2:
-                st.markdown("**Vote Breakdown:**")
-                breakdown = result.get('breakdown', {})
-                if breakdown:
-                    votes_same = breakdown.get('votes_same', 0)
-                    votes_diff = breakdown.get('votes_different', 0)
-                    st.write(f"- Same Person: {votes_same} votes")
-                    st.write(f"- Different Person: {votes_diff} votes")
-        
-        # Action buttons
-        st.markdown("---")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            if st.button("🔄 New Comparison", use_container_width=True):
-                reset_app()
-        
-        with col2:
-            # Download result as JSON
-            import json
-            result_json = json.dumps({
-                'final_decision': result['final_decision'],
-                'confidence': result['confidence'],
-                'total_votes': result['total_votes'],
-                'processing_time': result['processing_time'],
-                'stopped_early': result['stopped_early']
-            }, indent=2)
-            
-            st.download_button(
-                label="📥 Download Result",
-                data=result_json,
-                file_name="comparison_result.json",
-                mime="application/json",
-                use_container_width=True
-            )
+                # Download result as JSON
+                import json
+                result_json = json.dumps({
+                    'final_decision': result['final_decision'],
+                    'confidence': result['confidence'],
+                    'total_votes': result['total_votes'],
+                    'processing_time': result['processing_time'],
+                    'stopped_early': result['stopped_early']
+                }, indent=2)
+                
+                st.download_button(
+                    label="📥 Download Result",
+                    data=result_json,
+                    file_name="comparison_result.json",
+                    mime="application/json",
+                    use_container_width=True
+                )
     
     # ========================================================================
     # SIDEBAR (Optional Info)

@@ -211,7 +211,6 @@ def progress_callback(message: str, percentage: float):
         st.session_state.progress_data['current_stage'] = 'completed'
 
 def display_confidence_metric(confidence: float, is_same: bool):
-    """Display confidence score with color coding"""
     if confidence >= 80:
         color = "🟢"
         level = "High"
@@ -222,7 +221,7 @@ def display_confidence_metric(confidence: float, is_same: bool):
         color = "🔴"
         level = "Low"
     
-    return f"{color} **{confidence:.1f}%** ({level} Confidence)"
+    return f"{color} {confidence:.1f}% ({level} Confidence)"
 
 # ============================================================================
 # MAIN APP
@@ -322,27 +321,7 @@ def main():
         # Progress bar
         progress_bar = st.progress(0)
         status_text = st.empty()
-        
-        # Stage indicators
-        st.markdown("""
-        <div class="stage-container">
-            <div class="stage" id="stage-original">
-                <div class="stage-icon">📸</div>
-                <div class="stage-label">Original</div>
-            </div>
-            <div class="stage" id="stage-cropped">
-                <div class="stage-icon">✂️</div>
-                <div class="stage-label">Cropped</div>
-            </div>
-            <div class="stage" id="stage-aligned">
-                <div class="stage-icon">🔄</div>
-                <div class="stage-label">Aligned</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        stage_status = st.empty()
-        
+                
         # Create placeholder for stage updates
         stage_cols = st.columns(3)
         stage_placeholders = {
@@ -439,7 +418,7 @@ def main():
         # Confidence score (large display)
         st.markdown("### 🎯 Confidence Score")
         confidence_display = display_confidence_metric(confidence, is_same)
-        st.markdown(f"<div style='text-align: center; font-size: 2rem; margin: 2rem 0;'>{confidence_display}</div>", unsafe_allow_html=True)
+
         
         # Create progress circle visualization
         col1, col2, col3 = st.columns([1, 2, 1])

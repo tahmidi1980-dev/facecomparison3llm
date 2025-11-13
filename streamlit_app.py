@@ -451,93 +451,125 @@ def main():
             )
         
 # Additional info (expandable)
-    with st.expander("📋 Detailed Information"):
-        col1, col2 = st.columns(2)
+with st.expander("📋 Detailed Information"):
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("**Processing Details:**")
+        st.write(f"- Early Stopped: {'Yes ✅' if result.get('stopped_early', False) else 'No'}")
+        st.write(f"- Cropping: {'Success ✅' if result.get('cropping_success', False) else 'Failed ❌'}")
+        st.write(f"- Alignment: {'Success ✅' if result.get('alignment_success', False) else 'Failed ❌'}")
+    
+    with col2:
+        st.markdown("**Vote Breakdown:**")
         
-        with col1:
-            st.markdown("**Processing Details:**")
-            st.write(f"- Early Stopped: {'Yes ✅' if result.get('stopped_early', False) else 'No'}")
-            st.write(f"- Cropping: {'Success ✅' if result.get('cropping_success', False) else 'Failed ❌'}")
-            st.write(f"- Alignment: {'Success ✅' if result.get('alignment_success', False) else 'Failed ❌'}")
+        # Try to get breakdown data
+        breakdown = result.get('breakdown', {})
         
-        with col2:
-            st.markdown("**Vote Breakdown:**")
+        # Method 1: From breakdown dict
+        if breakdown and (breakdown.get('votes_same', 0) > 0 or breakdown.get('votes_different', 0) > 0):
+            votes_same = breakdown.get('votes_same', 0)
+            votes_diff = breakdown.get('votes_different', 0)
+        # Method 2: From vote_details
+        elif result.get('vote_details'):
+            vote_details = result.get('vote_details', [])
+            votes_same = sum(1 for v in vote_details if v.get('result') == 'same')
+            votes_diff = sum(1 for v in vote_details if v.get('result') == 'different')
+        # Method 3: Calculate from total_votes and decision
+        else:
+            total_votes = result.get('total_votes', 0)
+            final_decision = result.get('final_decision', '')
             
-            # Try to get breakdown data
-            breakdown = result.get('breakdown', {})
-            
-            # Method 1: From breakdown dict
-            if breakdown and (breakdown.get('votes_same', 0) > 0 or breakdown.get('votes_different', 0) > 0):
-                votes_same = breakdown.get('votes_same', 0)
-                votes_diff = breakdown.get('votes_different', 0)
-            # Method 2: From vote_details
-            elif result.get('vote_details'):
-                vote_details = result.get('vote_details', [])
-                votes_same = sum(1 for v in vote_details if v.get('result') == 'same')
-                votes_diff = sum(1 for v in vote_details if v.get('result') == 'different')
-            # Method 3: Calculate from total_votes and decision
-            else:
-                total_votes = result.get('total_votes', 0)
-                final_decision = result.get('final_decision', '')
-                
-                if total_votes > 0:
-                    # Estimate based on confidence and decision
-                    if final_decision == 'same':
-                        # If same, majority voted same
-                        votes_same = int(total_votes * result.get('confidence', 50) / 100)
-                        votes_diff = total_votes - votes_same
-                    else:
-                        # If different, majority voted different
-                        votes_diff = int(total_votes * result.get('confidence', 50) / 100)
-                        votes_same = total_votes - votes_diff
+            if total_votes > 0:
+                # Estimate based on confidence and decision
+                if final_decision == 'same':
+                    # If same, majority voted same
+                    votes_same = int(total_votes * result.get('confidence', 50) / 100)
+                    votes_diff = total_votes - votes_same
                 else:
-                    votes_same = 0
-                    votes_diff = 0
-            
-            st.write(f"- Same Person: {votes_same} votes")
-            st.write(f"- Different Person: {votes_diff} votes")
-            
-            # Show total for verification
-            total = votes_same + votes_diff
-            if total > 0:
-                st.write(f"- **Total:** {total} votes")
+                    # If different, majority voted different
+                    votes_diff = int(total_votes * result.get('confidence', 50) / 100)
+                    votes_same = total_votes - votes_diff
+            else:
+                votes_same = 0
+                votes_diff = 0
+        
+        st.write(f"- Same Person: {votes_same} votes")
+        st.write(f"- Different Person: {votes_diff} votes")
+        
+        # Show total for verification
+        total = votes_same + votes_diff
+        if total > 0:
+            st.write(f"- **Total:** {total} votes")
+
+# ========================================================================
+# ACTION BUTTONS - DI SINI (SEBELUM SIDEBAR!)
+# ========================================================================
+
+# Action buttons
+st.markdown("---")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    if st.button("🔄 New Comparison", use_container_width=True):
+        reset_app()
+
+with col2:
+    # Download result as JSON
+    import json
+    result_json = json.dumps({
+        'final_decision': result['final_decision'],
+        'confidence': result['confidence'],
+        'total_votes': result['total_votes'],
+        'processing_time': result['processing_time'],
+        'stopped_early': result['stopped_early']
+    }, indent=2)
     
-    # ========================================================================
-    # SIDEBAR (Optional Info)
-    # ========================================================================
+    st.download_button(
+        label="📥 Download Result",
+        data=result_json,
+        file_name="comparison_result.json",
+        mime="application/json",
+        use_container_width=True
+    )
+
+# ========================================================================
+# SIDEBAR (Optional Info)
+# ========================================================================
+
+with st.sidebar:
+    st.markdown("### ℹ️ About")
+    st.markdown("""
+    This system uses advanced AI models to compare faces:
     
-    with st.sidebar:
-        st.markdown("### ℹ️ About")
-        st.markdown("""
-        This system uses advanced AI models to compare faces:
-        
-        - **Qwen VL** - Vision language model
-        - **ChatGPT-4o** - OpenAI's vision model
-        - **Gemini** - Google's AI model
-        - **DeepFace** - Traditional face recognition
-        
-        **Features:**
-        - Multi-model voting (10 votes)
-        - Intelligent preprocessing
-        - Weighted voting system
-        - Early stopping optimization
-        """)
-        
-        st.markdown("---")
-        
-        # System statistics
-        try:
-            stats = comparison_logger.get_statistics()
-            if stats.get('total_comparisons', 0) > 0:
-                st.markdown("### 📈 System Stats")
-                st.metric("Total Comparisons", stats['total_comparisons'])
-                st.metric("Avg Confidence", f"{stats.get('avg_confidence', 0):.1f}%")
-                st.metric("Avg Time", f"{stats.get('avg_processing_time', 0):.1f}s")
-        except:
-            pass
-        
-        st.markdown("---")
-        st.markdown("**Made with ❤️ using Streamlit**")
+    - **Qwen VL** - Vision language model
+    - **ChatGPT-4o** - OpenAI's vision model
+    - **Gemini** - Google's AI model
+    - **MediaPipe** - Face detection & landmarks
+    
+    **Features:**
+    - Multi-model voting (10 votes)
+    - Intelligent preprocessing
+    - Weighted voting system
+    - Early stopping optimization
+    """)
+    
+    st.markdown("---")
+    
+    # System statistics
+    try:
+        stats = comparison_logger.get_statistics()
+        if stats.get('total_comparisons', 0) > 0:
+            st.markdown("### 📈 System Stats")
+            st.metric("Total Comparisons", stats['total_comparisons'])
+            st.metric("Avg Confidence", f"{stats.get('avg_confidence', 0):.1f}%")
+            st.metric("Avg Time", f"{stats.get('avg_processing_time', 0):.1f}s")
+    except:
+        pass
+    
+    st.markdown("---")
+    st.markdown("**Made with ❤️ using Streamlit**")
 
 # ============================================================================
 # RUN APP

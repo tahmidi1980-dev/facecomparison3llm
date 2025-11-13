@@ -1,6 +1,5 @@
 """
 LLM Comparator Module (MediaPipe version - Streamlit Cloud Compatible)
-Handles face comparison using Qwen, ChatGPT, Gemini, and MediaPipe
 """
 import base64
 import time
@@ -24,7 +23,7 @@ mp_face_mesh = None
 FaceMesh = None
 
 def _init_mediapipe():
-    """Initialize MediaPipe for face comparison"""
+    """Initialize MediaPipe"""
     global mp_face_mesh, FaceMesh
     
     if mp_face_mesh is None:
@@ -32,7 +31,7 @@ def _init_mediapipe():
             import mediapipe as mp
             mp_face_mesh = mp.solutions.face_mesh
             FaceMesh = mp_face_mesh.FaceMesh
-            logger.info("MediaPipe initialized for face comparison")
+            logger.info("MediaPipe initialized")
         except ImportError as e:
             logger.error(f"MediaPipe not available: {e}")
             raise
@@ -45,16 +44,24 @@ class LLMComparator:
         self.max_retries = config.MAX_RETRIES
         self.prompt = config.COMPARISON_PROMPT
         
-        # Initialize OpenAI clients
+        # Initialize OpenAI clients (with error handling)
         self.clients = {}
         for llm_name, llm_config in config.LLM_CONFIGS.items():
-            if config.API_KEYS.get(llm_name):
-                self.clients[llm_name] = OpenAI(
-                    base_url=llm_config['base_url'],
-                    api_key=config.API_KEYS[llm_name]
-                )
+            api_key = config.API_KEYS.get(llm_name)
+            if api_key and api_key.startswith('sk-'):  # Valid key format
+                try:
+                    self.clients[llm_name] = OpenAI(
+                        base_url=llm_config['base_url'],
+                        api_key=api_key,
+                        timeout=30.0
+                    )
+                    logger.info(f"✓ {llm_name} client initialized")
+                except Exception as e:
+                    logger.warning(f"✗ Failed to init {llm_name}: {str(e)[:100]}")
+            else:
+                logger.warning(f"⚠️  No valid API key for {llm_name}")
         
-        # MediaPipe face mesh (lazy init)
+        # MediaPipe (lazy init)
         self.face_mesh = None
     
     def _ensure_mediapipe(self):
@@ -75,27 +82,24 @@ class LLMComparator:
         return base64.b64encode(buffer.getvalue()).decode('utf-8')
     
     def _call_llm_api(self, llm_name: str, img1: Image.Image, img2: Image.Image) -> Tuple[Optional[str], str]:
-        """Call LLM API with retry logic"""
+        """Call LLM API"""
         if llm_name not in self.clients:
-            logger.error(f"LLM {llm_name} not configured")
+            logger.error(f"{llm_name} not configured")
             return None, f"{llm_name}_not_configured"
         
         try:
-            # Convert to base64
             img1_b64 = self._image_to_base64(img1)
             img2_b64 = self._image_to_base64(img2)
         except Exception as e:
             logger.error(f"Encoding error: {e}")
             return None, "encoding_error"
         
-        # Get model config
         llm_config = config.LLM_CONFIGS[llm_name]
         models_to_try = [llm_config['model']]
         
         if 'fallbacks' in llm_config:
             models_to_try.extend(llm_config['fallbacks'])
         
-        # Try each model
         for model_idx, model in enumerate(models_to_try):
             for attempt in range(self.max_retries):
                 try:
@@ -114,7 +118,6 @@ class LLMComparator:
                         timeout=config.REQUEST_TIMEOUT
                     )
                     
-                    # Parse response
                     text = response.choices[0].message.content.strip().upper()
                     
                     if "YES" in text and "NO" not in text:
@@ -168,22 +171,15 @@ class LLMComparator:
         return self._call_llm_api("gemini", img1, img2)
     
     def compare_with_deepface(self, img1: Image.Image, img2: Image.Image) -> Tuple[Optional[str], str]:
-        """
-        Compare faces using MediaPipe landmarks
-        
-        Returns:
-            (result: 'same'/'different'/None, method: str)
-        """
+        """Compare using MediaPipe"""
         logger.info("Comparing with MediaPipe...")
         
         try:
             self._ensure_mediapipe()
             
-            # Convert to numpy
             img1_array = np.array(img1)
             img2_array = np.array(img2)
             
-            # Get face meshes
             results1 = self.face_mesh.process(img1_array)
             results2 = self.face_mesh.process(img2_array)
             
@@ -191,27 +187,23 @@ class LLMComparator:
                 logger.warning("No face detected")
                 return None, "mediapipe_no_face"
             
-            # Get landmarks
             landmarks1 = results1.multi_face_landmarks[0].landmark
             landmarks2 = results2.multi_face_landmarks[0].landmark
             
-            # Extract key facial points (subset for comparison)
-            key_indices = [1, 33, 61, 199, 263, 291]  # Nose, eyes, mouth corners
+            # Key facial points
+            key_indices = [1, 33, 61, 199, 263, 291]
             
             points1 = np.array([[lm.x, lm.y, lm.z] for i, lm in enumerate(landmarks1) if i in key_indices])
             points2 = np.array([[lm.x, lm.y, lm.z] for i, lm in enumerate(landmarks2) if i in key_indices])
             
-            # Calculate Euclidean distance
             distance = np.linalg.norm(points1 - points2)
-            
-            # Threshold (empirically determined)
             threshold = 0.15
             is_same = distance < threshold
             
             result = "same" if is_same else "different"
             method = f"mediapipe_{distance:.3f}"
             
-            logger.info(f"MediaPipe result: {result} (distance: {distance:.3f})")
+            logger.info(f"MediaPipe: {result} (dist: {distance:.3f})")
             
             return result, method
             
@@ -221,7 +213,6 @@ class LLMComparator:
     
     def compare_with_retinaface(self, img1: Image.Image, img2: Image.Image) -> Tuple[Optional[str], str]:
         """Alias for compatibility"""
-        logger.info("Comparing with MediaPipe (retinaface compatibility)...")
         return self.compare_with_deepface(img1, img2)
     
     def __del__(self):
@@ -232,5 +223,5 @@ class LLMComparator:
         except:
             pass
 
-# Global comparator instance
+# Global instance
 comparator = LLMComparator()

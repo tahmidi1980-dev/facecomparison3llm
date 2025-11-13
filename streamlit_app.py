@@ -1,3 +1,8 @@
+"""
+Face Comparison System - Streamlit Application
+Advanced AI-powered face verification with multi-model voting
+"""
+
 import streamlit as st
 import time
 import json
@@ -21,7 +26,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom CSS with Enhanced Interactivity
+# Custom CSS
 st.markdown("""
 <style>
     /* Main container */
@@ -29,7 +34,7 @@ st.markdown("""
         padding-top: 2rem;
     }
     
-    /* Header styling with gradient animation */
+    /* Header styling */
     .header-container {
         text-align: center;
         padding: 2rem 0;
@@ -37,23 +42,11 @@ st.markdown("""
         border-radius: 1rem;
         margin-bottom: 2rem;
         color: white;
-        animation: fadeIn 0.8s ease-in;
-    }
-    
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(-20px); }
-        to { opacity: 1; transform: translateY(0); }
     }
     
     .header-icon {
         font-size: 3rem;
         margin-bottom: 0.5rem;
-        animation: bounce 2s infinite;
-    }
-    
-    @keyframes bounce {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-10px); }
     }
     
     .header-title {
@@ -67,30 +60,27 @@ st.markdown("""
         opacity: 0.9;
     }
     
-    /* Result cards with hover effect */
+    /* Upload section */
+    .upload-section {
+        background: white;
+        padding: 2rem;
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+    }
+    
+    /* Result cards */
     .result-card {
         background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%);
         padding: 2rem;
         border-radius: 1rem;
         text-align: center;
         margin: 2rem 0;
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
-    
-    .result-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
     }
     
     .result-icon {
         font-size: 4rem;
         margin-bottom: 1rem;
-        animation: scaleIn 0.5s ease;
-    }
-    
-    @keyframes scaleIn {
-        from { transform: scale(0); }
-        to { transform: scale(1); }
     }
     
     .result-title {
@@ -99,23 +89,16 @@ st.markdown("""
         margin-bottom: 0.5rem;
     }
     
-    /* Stage indicators with smooth transitions */
+    /* Stage indicators */
     .stage-container {
         display: flex;
         justify-content: space-around;
         margin: 2rem 0;
-        gap: 1rem;
     }
     
     .stage {
         text-align: center;
         padding: 1rem;
-        border-radius: 0.5rem;
-        transition: all 0.3s ease;
-    }
-    
-    .stage:hover {
-        background: rgba(99, 102, 241, 0.05);
     }
     
     .stage-icon {
@@ -129,22 +112,19 @@ st.markdown("""
         font-weight: 500;
     }
     
-    /* Info box with hover effect */
+    /* Info box */
     .info-box {
-        background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+        background: #f3f4f6;
         padding: 1rem;
         border-radius: 0.5rem;
         margin: 1rem 0;
-        border-left: 4px solid #6366f1;
-        transition: all 0.3s ease;
     }
     
-    .info-box:hover {
-        transform: translateX(5px);
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
-    }
+    /* Hide Streamlit branding */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
     
-    /* Enhanced button styling */
+    /* Custom button */
     .stButton>button {
         width: 100%;
         background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
@@ -154,129 +134,13 @@ st.markdown("""
         border-radius: 0.75rem;
         border: none;
         font-size: 1.1rem;
-        transition: all 0.3s ease;
-        cursor: pointer;
     }
     
     .stButton>button:hover {
-        box-shadow: 0 10px 20px rgba(99, 102, 241, 0.4);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         transform: translateY(-2px);
     }
-    
-    .stButton>button:active {
-        transform: translateY(0);
-    }
-    
-    /* Download button special styling */
-    .stDownloadButton>button {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    }
-    
-    .stDownloadButton>button:hover {
-        box-shadow: 0 10px 20px rgba(16, 185, 129, 0.4);
-    }
-    
-    /* Progress bar animation */
-    .stProgress > div > div > div {
-        background: linear-gradient(90deg, #6366f1, #8b5cf6, #6366f1);
-        background-size: 200% 100%;
-        animation: shimmer 2s infinite;
-    }
-    
-    @keyframes shimmer {
-        0% { background-position: 200% 0; }
-        100% { background-position: -200% 0; }
-    }
-    
-    /* Metric cards enhancement */
-    .stMetric {
-        background: white;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-        transition: all 0.3s ease;
-    }
-    
-    .stMetric:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
-    
-    /* Hide Streamlit branding */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    
-    /* Expander styling */
-    .streamlit-expanderHeader {
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%);
-        border-radius: 0.5rem;
-        font-weight: 600;
-    }
-    
-    .streamlit-expanderHeader:hover {
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%);
-    }
-    
-    /* Sidebar enhancement */
-    .css-1d391kg {
-        background: linear-gradient(180deg, #f9fafb 0%, #ffffff 100%);
-    }
-    
-    /* Image upload area */
-    .stFileUploader {
-        border: 2px dashed #6366f1;
-        border-radius: 0.5rem;
-        padding: 1rem;
-        transition: all 0.3s ease;
-    }
-    
-    .stFileUploader:hover {
-        border-color: #4f46e5;
-        background: rgba(99, 102, 241, 0.02);
-    }
 </style>
-
-<script>
-// Enhanced interactivity with JavaScript
-document.addEventListener('DOMContentLoaded', function() {
-    // Smooth scroll behavior
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-        anchor.addEventListener('click', function (e) {
-            e.preventDefault();
-            const target = document.querySelector(this.getAttribute('href'));
-            if (target) {
-                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        });
-    });
-    
-    // Add ripple effect to buttons
-    document.querySelectorAll('.stButton>button').forEach(button => {
-        button.addEventListener('click', function(e) {
-            let ripple = document.createElement('span');
-            ripple.classList.add('ripple');
-            this.appendChild(ripple);
-            
-            let x = e.clientX - e.target.offsetLeft;
-            let y = e.clientY - e.target.offsetTop;
-            
-            ripple.style.left = x + 'px';
-            ripple.style.top = y + 'px';
-            
-            setTimeout(() => ripple.remove(), 600);
-        });
-    });
-    
-    // Add loading spinner to buttons when clicked
-    document.querySelectorAll('.stButton>button').forEach(button => {
-        button.addEventListener('click', function() {
-            if (!this.disabled) {
-                this.innerHTML = '<span class="spinner"></span> ' + this.innerHTML;
-            }
-        });
-    });
-});
-</script>
 """, unsafe_allow_html=True)
 
 # Session State Initialization
@@ -297,7 +161,6 @@ if 'progress_data' not in st.session_state:
     }
 
 # Helper Functions
-
 def reset_app():
     """Reset application to initial state"""
     st.session_state.stage = 'upload'
@@ -353,9 +216,8 @@ def display_confidence_metric(confidence: float, is_same: bool):
     return f'{color} <strong>{confidence:.1f}%</strong> ({level} Confidence)'
 
 # Main Application
-
 def main():
-    # Header Section
+    # Header
     st.markdown("""
     <div class="header-container">
         <div class="header-icon">🎭</div>
@@ -409,7 +271,7 @@ def main():
                     st.error(error)
                     st.session_state.uploaded_images['img2'] = None
         
-        # Info Box
+        # Info box
         st.markdown("""
         <div class="info-box">
             📌 <strong>Tips for best results:</strong>
@@ -424,7 +286,6 @@ def main():
         
         st.markdown("---")
         
-        # Analyze Button
         can_analyze = (
             st.session_state.uploaded_images['img1'] is not None and
             st.session_state.uploaded_images['img2'] is not None
@@ -451,7 +312,6 @@ def main():
         for key, placeholder in stage_placeholders.items():
             placeholder.markdown("⏹ Pending")
         
-        # Run Comparison
         try:
             img1 = st.session_state.uploaded_images['img1']
             img2 = st.session_state.uploaded_images['img2']
@@ -508,7 +368,7 @@ def main():
         is_same = result['final_decision'] == 'same'
         confidence = result['confidence']
         
-        # Result Card
+        # Result card
         icon = "✅" if is_same else "❌"
         title = "Same Person" if is_same else "Different Person"
         subtitle = "The images show the same person" if is_same else "The images show different people"
@@ -521,14 +381,14 @@ def main():
         </div>
         """, unsafe_allow_html=True)
         
-        # Confidence Score Display
+        # Confidence score
         st.markdown("### 🎯 Confidence Score")
         confidence_display = display_confidence_metric(confidence, is_same)
         st.markdown(f"<div style='text-align: center; font-size: 2rem; margin: 2rem 0;'>{confidence_display}</div>", unsafe_allow_html=True)
         
         st.markdown("---")
         
-        # Statistics Section
+        # Statistics
         st.markdown("### 📊 Analysis Statistics")
         
         col1, col2, col3 = st.columns(3)
@@ -554,7 +414,7 @@ def main():
                 help="Number of API calls made"
             )
         
-        # Detailed Information Expander
+        # Additional info (expandable)
         with st.expander("📋 Detailed Information"):
             col1, col2 = st.columns(2)
             
@@ -598,7 +458,7 @@ def main():
                 if total > 0:
                     st.write(f"- **Total:** {total} votes")
         
-        # Action Buttons
+        # Action buttons
         st.markdown("---")
         
         col1, col2 = st.columns(2)
@@ -625,8 +485,7 @@ def main():
                 mime="application/json"
             )
 
-# Sidebar Section
-
+# Sidebar
 with st.sidebar:
     st.markdown("### ℹ️ About")
     st.markdown("""
@@ -646,7 +505,6 @@ with st.sidebar:
     
     st.markdown("---")
     
-    # System Statistics
     try:
         stats = comparison_logger.get_statistics()
         if stats.get('total_comparisons', 0) > 0:
@@ -660,7 +518,6 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("**Made with ❤️ using Streamlit**")
 
-# Run Application
-
+# Run app
 if __name__ == "__main__":
     main()

@@ -1,5 +1,5 @@
 """
-Image Preprocessing Pipeline (MediaPipe version - Streamlit Cloud Compatible)
+Image Preprocessing Pipeline (MediaPipe version - Python 3.13 Compatible)
 Handles cropping and alignment
 """
 import cv2
@@ -24,24 +24,27 @@ class ImageProcessor:
         self.crop_config = config.PREPROCESSING['cropping']
         self.align_config = config.PREPROCESSING['alignment']
         
-        # Initialize MediaPipe Face Detection
+        # Initialize MediaPipe Face Detection and Face Mesh
         self.mp_face_detection = mp.solutions.face_detection
         self.mp_face_mesh = mp.solutions.face_mesh
         
+        # Face Detection for cropping (model_selection=1 for better accuracy)
         self.face_detection = self.mp_face_detection.FaceDetection(
             min_detection_confidence=0.5,
-            model_selection=1  # 1 for full range, 0 for short range
+            model_selection=1  # 1=full range detector, 0=short range
         )
         
+        # Face Mesh for alignment (landmark detection)
         self.face_mesh = self.mp_face_mesh.FaceMesh(
             static_image_mode=True,
             max_num_faces=1,
+            refine_landmarks=True,
             min_detection_confidence=0.5
         )
         
     def crop_with_retinaface(self, img1: Image.Image, img2: Image.Image) -> Tuple[Optional[Image.Image], Optional[Image.Image], bool]:
         """
-        Crop faces using MediaPipe detector (replaces face-recognition)
+        Crop faces using MediaPipe detector
         
         Returns:
             (cropped_img1, cropped_img2, success)
@@ -62,7 +65,7 @@ class ImageProcessor:
                 logger.warning("Failed to crop image 2")
                 return None, None, False
             
-            logger.info("✓ Successfully cropped both images")
+            logger.info("✓ Successfully cropped both images with MediaPipe")
             return cropped1, cropped2, True
             
         except Exception as e:
@@ -70,51 +73,54 @@ class ImageProcessor:
             return None, None, False
     
     def _crop_single_image(self, img: Image.Image) -> Optional[Image.Image]:
-        """Crop single image using MediaPipe"""
+        """Crop single image using MediaPipe Face Detection"""
         try:
-            # Convert PIL to numpy (RGB)
+            # Convert PIL to numpy array (RGB format)
             img_array = np.array(img)
             
-            # MediaPipe expects RGB
+            # Ensure RGB format (MediaPipe requires RGB)
             if len(img_array.shape) == 2:  # Grayscale
                 img_array = cv2.cvtColor(img_array, cv2.COLOR_GRAY2RGB)
             elif img_array.shape[2] == 4:  # RGBA
                 img_array = cv2.cvtColor(img_array, cv2.COLOR_RGBA2RGB)
             
-            # Detect face
+            # Detect faces
             results = self.face_detection.process(img_array)
             
             if not results.detections:
-                logger.warning("No face detected")
+                logger.warning("No face detected in image")
                 return None
             
-            # Get first/best detection
+            # Get the first/largest detection
             detection = results.detections[0]
             bboxC = detection.location_data.relative_bounding_box
             
             h, w, _ = img_array.shape
             
-            # Convert relative coordinates to absolute
+            # Convert relative coordinates to absolute pixels
             x = int(bboxC.xmin * w)
             y = int(bboxC.ymin * h)
             bbox_w = int(bboxC.width * w)
             bbox_h = int(bboxC.height * h)
             
-            # Add margin
+            # Add margin around face
             margin = self.crop_config['margin']
             margin_x = int(bbox_w * margin)
             margin_y = int(bbox_h * margin)
             
+            # Calculate crop coordinates with margin (ensure within bounds)
             x1 = max(0, x - margin_x)
             y1 = max(0, y - margin_y)
             x2 = min(w, x + bbox_w + margin_x)
             y2 = min(h, y + bbox_h + margin_y)
             
-            # Crop with margin
+            # Crop face with margin
             face_with_margin = img_array[y1:y2, x1:x2]
+            
+            # Convert back to PIL Image
             cropped_img = Image.fromarray(face_with_margin)
             
-            # Resize if needed
+            # Resize if image is too large
             max_size = self.crop_config.get('max_size')
             if max_size and max(cropped_img.size) > max_size:
                 ratio = max_size / max(cropped_img.size)
@@ -129,7 +135,7 @@ class ImageProcessor:
     
     def align_faces(self, img1: Image.Image, img2: Image.Image) -> Tuple[Optional[Image.Image], Optional[Image.Image], bool]:
         """
-        Align faces using MediaPipe Face Mesh
+        Align faces using MediaPipe Face Mesh landmarks
         
         Returns:
             (aligned_img1, aligned_img2, success)
@@ -150,7 +156,7 @@ class ImageProcessor:
                 logger.warning("Failed to align image 2")
                 return None, None, False
             
-            logger.info("✓ Successfully aligned both images")
+            logger.info("✓ Successfully aligned both images with MediaPipe")
             return aligned1, aligned2, True
             
         except Exception as e:
@@ -158,60 +164,71 @@ class ImageProcessor:
             return None, None, False
     
     def _align_single_image(self, img: Image.Image) -> Optional[Image.Image]:
-        """Align single image using MediaPipe Face Mesh"""
+        """Align single image by rotating to horizontal eyes using MediaPipe Face Mesh"""
         try:
-            # Convert to numpy
+            # Convert PIL to numpy
             img_array = np.array(img)
             
-            # Ensure RGB
-            if len(img_array.shape) == 2:
+            # Ensure RGB format
+            if len(img_array.shape) == 2:  # Grayscale
                 img_array = cv2.cvtColor(img_array, cv2.COLOR_GRAY2RGB)
-            elif img_array.shape[2] == 4:
+            elif img_array.shape[2] == 4:  # RGBA
                 img_array = cv2.cvtColor(img_array, cv2.COLOR_RGBA2RGB)
             
-            # Get face landmarks
+            # Get face landmarks using MediaPipe Face Mesh
             results = self.face_mesh.process(img_array)
             
             if not results.multi_face_landmarks:
-                logger.warning("No face landmarks detected")
+                logger.warning("No face landmarks detected for alignment")
                 return None
             
-            # Get first face landmarks
+            # Get first face's landmarks
             face_landmarks = results.multi_face_landmarks[0]
             
             h, w, _ = img_array.shape
             
-            # Eye landmark indices (MediaPipe Face Mesh)
+            # MediaPipe Face Mesh landmark indices for eyes
+            # Left eye: outer corner (33) and inner corner (133)
+            # Right eye: inner corner (362) and outer corner (263)
             LEFT_EYE_INDICES = [33, 133, 160, 159, 158, 157, 173]
             RIGHT_EYE_INDICES = [362, 263, 387, 386, 385, 384, 398]
             
-            # Calculate eye centers
-            left_eye_pts = [(int(face_landmarks.landmark[i].x * w), 
-                            int(face_landmarks.landmark[i].y * h)) 
-                           for i in LEFT_EYE_INDICES]
-            right_eye_pts = [(int(face_landmarks.landmark[i].x * w), 
-                             int(face_landmarks.landmark[i].y * h)) 
-                            for i in RIGHT_EYE_INDICES]
+            # Extract eye landmark coordinates
+            left_eye_pts = [
+                (int(face_landmarks.landmark[i].x * w), 
+                 int(face_landmarks.landmark[i].y * h)) 
+                for i in LEFT_EYE_INDICES
+            ]
+            right_eye_pts = [
+                (int(face_landmarks.landmark[i].x * w), 
+                 int(face_landmarks.landmark[i].y * h)) 
+                for i in RIGHT_EYE_INDICES
+            ]
             
+            # Calculate eye centers (average of all eye points)
             left_eye_center = np.mean(left_eye_pts, axis=0).astype(int)
             right_eye_center = np.mean(right_eye_pts, axis=0).astype(int)
             
-            # Calculate angle
+            # Calculate rotation angle to make eyes horizontal
             dY = right_eye_center[1] - left_eye_center[1]
             dX = right_eye_center[0] - left_eye_center[0]
             angle = np.degrees(np.arctan2(dY, dX))
             
-            # Rotate image
+            # Calculate rotation center (midpoint between eyes)
             center_x = (left_eye_center[0] + right_eye_center[0]) / 2
             center_y = (left_eye_center[1] + right_eye_center[1]) / 2
             
+            # Get rotation matrix
             M = cv2.getRotationMatrix2D((center_x, center_y), angle, 1.0)
+            
+            # Apply rotation
             aligned_array = cv2.warpAffine(
                 img_array, M, (w, h),
                 flags=cv2.INTER_CUBIC,
                 borderMode=cv2.BORDER_REPLICATE
             )
             
+            # Convert back to PIL Image
             return Image.fromarray(aligned_array)
             
         except Exception as e:
@@ -220,7 +237,7 @@ class ImageProcessor:
     
     def validate_image(self, img: Image.Image) -> Tuple[bool, str]:
         """
-        Validate image
+        Validate image format and dimensions
         
         Returns:
             (is_valid, error_message)
@@ -230,7 +247,7 @@ class ImageProcessor:
             if img.format and img.format.lower() not in ['jpeg', 'jpg', 'png']:
                 return False, f"Invalid format: {img.format}. Only JPG/PNG allowed."
             
-            # Check size
+            # Check dimensions
             width, height = img.size
             if width < 100 or height < 100:
                 return False, "Image too small. Minimum 100x100 pixels."
@@ -246,8 +263,10 @@ class ImageProcessor:
     def __del__(self):
         """Cleanup MediaPipe resources"""
         try:
-            self.face_detection.close()
-            self.face_mesh.close()
+            if hasattr(self, 'face_detection'):
+                self.face_detection.close()
+            if hasattr(self, 'face_mesh'):
+                self.face_mesh.close()
         except:
             pass
 

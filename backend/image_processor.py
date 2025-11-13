@@ -11,6 +11,14 @@ import logging
 import mediapipe as mp
 import sys
 
+try:
+    import cv2
+except ImportError:
+    import subprocess
+    import sys
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "opencv-python-headless"])
+    import cv2
+    
 sys.path.append(str(Path(__file__).parent))
 import config
 

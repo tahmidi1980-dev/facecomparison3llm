@@ -8,11 +8,12 @@ Pillow>=10.0.0,<11
 opencv-python-headless==4.10.0.84
 numpy>=1.24.0,<2.0.0
 
-# Face Detection - MediaPipe (lightweight & compatible)
+# Face Detection - MediaPipe
 mediapipe==0.10.9
 
-# LLM API
-openai==1.54.3
+# LLM API - UPDATED VERSION
+openai>=1.0.0
+httpx>=0.24.0
 requests==2.32.3
 pandas>=2.0.0
 tqdm==4.66.5

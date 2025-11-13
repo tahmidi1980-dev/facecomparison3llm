@@ -1,8 +1,3 @@
-"""
-Face Comparison System - Streamlit App
-Advanced multi-model face comparison with weighted voting
-"""
-
 import streamlit as st
 import time
 from pathlib import Path
@@ -286,7 +281,7 @@ def main():
                 valid, error = validate_image(uploaded_file2)
                 if valid:
                     image2 = Image.open(uploaded_file2)
-                    st.image(image2, use_container_width=True)
+                    st.image(image2, use_column_width=True)
                     st.session_state.uploaded_images['img2'] = image2
                 else:
                     st.error(error)

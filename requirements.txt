@@ -1,17 +1,9 @@
-# Face Comparison System - Streamlit Cloud (Python 3.11)
-
 streamlit==1.39.0
 python-dotenv==1.0.1
-
-# Image Processing
 Pillow>=10.0.0,<11
 opencv-python-headless==4.10.0.84
 numpy>=1.24.0,<2.0.0
-
-# Face Detection - MediaPipe
 mediapipe==0.10.9
-
-# LLM API - UPDATED VERSION
 openai>=1.0.0
 httpx>=0.24.0
 requests==2.32.3

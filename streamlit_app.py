@@ -121,18 +121,20 @@ st.markdown("""
     
     /* Custom button */
     .stButton>button {
-        width: 100%;
+        width: auto;
+        display: inline-block;
         background: linear-gradient(135deg, #74c4f0 0%, #00e41f 100%);
         color: #000000;
-        font-weight: 600;
-        padding: 0.75rem 2rem;
-        border-radius: 0.75rem;
+        font-weight: 700;
+        padding: 0.5rem 1.5rem;
+        border-radius: 0.5rem;
         border: none;
-        font-size: 1.1rem;
+        font-size: 0.9rem;
+        letter-spacing: 0.5px;
     }
     
     .stButton>button:hover {
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         transform: translateY(-2px);
     }
 </style>

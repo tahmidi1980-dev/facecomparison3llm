@@ -294,6 +294,7 @@ def main():
             st.rerun()
     
     # Processing Stage
+    # Processing Stage
     elif st.session_state.stage == 'processing':
         st.markdown("### ⏳ Analyzing Faces...")
         
@@ -307,6 +308,11 @@ def main():
             'aligned': stage_cols[2].empty()
         }
         
+        # Tampilkan label awal dengan icon
+        stage_placeholders['original'].markdown("⏳ **Original**<br>Processing...", unsafe_allow_html=True)
+        stage_placeholders['cropped'].markdown("✂️ **Cropping**<br>⏹ Pending", unsafe_allow_html=True)
+        stage_placeholders['aligned'].markdown("🔄 **Alignment**<br>⏹ Pending", unsafe_allow_html=True)
+            
         for key, placeholder in stage_placeholders.items():
             placeholder.markdown("⏹ Pending")
         
@@ -321,18 +327,21 @@ def main():
                 
                 current = st.session_state.progress_data['current_stage']
                 if current == 'original':
-                    stage_placeholders['original'].markdown("⏳ **Processing...**")
+                    stage_placeholders['original'].markdown("⏳ **Original**<br>Processing...", unsafe_allow_html=True)
+                    stage_placeholders['cropped'].markdown("✂️ **Cropping**<br>⏹ Pending", unsafe_allow_html=True)
+                    stage_placeholders['aligned'].markdown("🔄 **Alignment**<br>⏹ Pending", unsafe_allow_html=True)
                 elif current == 'cropped':
-                    stage_placeholders['original'].markdown("✅ Completed")
-                    stage_placeholders['cropped'].markdown("⏳ **Processing...**")
+                    stage_placeholders['original'].markdown("✅ **Original**<br>Completed", unsafe_allow_html=True)
+                    stage_placeholders['cropped'].markdown("⏳ **Cropping**<br>Processing...", unsafe_allow_html=True)
+                    stage_placeholders['aligned'].markdown("🔄 **Alignment**<br>⏹ Pending", unsafe_allow_html=True)
                 elif current == 'aligned':
-                    stage_placeholders['original'].markdown("✅ Completed")
-                    stage_placeholders['cropped'].markdown("✅ Completed")
-                    stage_placeholders['aligned'].markdown("⏳ **Processing...**")
+                    stage_placeholders['original'].markdown("✅ **Original**<br>Completed", unsafe_allow_html=True)
+                    stage_placeholders['cropped'].markdown("✅ **Cropping**<br>Completed", unsafe_allow_html=True)
+                    stage_placeholders['aligned'].markdown("⏳ **Alignment**<br>Processing...", unsafe_allow_html=True)
                 elif current == 'completed':
-                    stage_placeholders['original'].markdown("✅ Completed")
-                    stage_placeholders['cropped'].markdown("✅ Completed")
-                    stage_placeholders['aligned'].markdown("✅ Completed")
+                    stage_placeholders['original'].markdown("✅ **Original**<br>Completed", unsafe_allow_html=True)
+                    stage_placeholders['cropped'].markdown("✅ **Cropping**<br>Completed", unsafe_allow_html=True)
+                    stage_placeholders['aligned'].markdown("✅ **Alignment**<br>Completed", unsafe_allow_html=True)
             
             result = orchestrator.run_comparison(
                 img1, img2, 

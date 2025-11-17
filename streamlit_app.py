@@ -310,8 +310,8 @@ def main():
         
         # Tampilkan label awal dengan icon
         stage_placeholders['original'].markdown("⏳ **Original**<br>Processing...", unsafe_allow_html=True)
-        stage_placeholders['cropped'].markdown("✂️ **Cropping**<br>⏹ Pending", unsafe_allow_html=True)
-        stage_placeholders['aligned'].markdown("🔄 **Alignment**<br>⏹ Pending", unsafe_allow_html=True)
+        stage_placeholders['cropped'].markdown("✂️ **Cropping**<br>Pending...", unsafe_allow_html=True)
+        stage_placeholders['aligned'].markdown("🔄 **Alignment**<br>Pending..", unsafe_allow_html=True)
             
         for key, placeholder in stage_placeholders.items():
             placeholder.markdown("⏹ Pending")

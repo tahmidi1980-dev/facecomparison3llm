@@ -1,8 +1,3 @@
-"""
-Face Comparison System - Streamlit Application
-Advanced AI-powered face verification with multi-model voting
-"""
-
 import streamlit as st
 import time
 import json
@@ -127,7 +122,7 @@ st.markdown("""
     /* Custom button */
     .stButton>button {
         width: 100%;
-        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        background: linear-gradient(135deg, #74c4f0 0%, #00e41f 100%);
         color: white;
         font-weight: 600;
         padding: 0.75rem 2rem;

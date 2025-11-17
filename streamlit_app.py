@@ -121,12 +121,13 @@ st.markdown("""
     
     /* Custom button */
     .stButton>button {
-        width: auto;
-        display: inline-block;
+        display: block;
+        margin: 0 auto;
+        width: fit-content;
         background: linear-gradient(135deg, #74c4f0 0%, #00e41f 100%);
         color: #000000;
         font-weight: 700;
-        padding: 0.5rem 1.5rem;
+        padding: 0.5rem 2rem;
         border-radius: 0.5rem;
         border: none;
         font-size: 0.9rem;
